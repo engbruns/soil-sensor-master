@@ -1,0 +1,60 @@
+app:
+  language: ru
+  theme: light
+graph_settings:
+  max_history: 300
+  y_limits:
+    ec:
+      auto: true
+      max: 100.0
+      min: 0.0
+      step: 10.0
+    humidity:
+      auto: false
+      max: 100.0
+      min: 0.0
+      step: 10.0
+    nitrogen:
+      auto: true
+      max: 100.0
+      min: 0.0
+      step: 10.0
+    ph:
+      auto: false
+      max: 14.0
+      min: 0.0
+      step: 10.0
+    phosphorus:
+      auto: true
+      max: 100.0
+      min: 0.0
+      step: 10.0
+    potassium:
+      auto: true
+      max: 100.0
+      min: 0.0
+      step: 10.0
+    salinity:
+      auto: true
+      max: 100.0
+      min: 0.0
+      step: 10.0
+    tds:
+      auto: true
+      max: 100.0
+      min: 0.0
+      step: 10.0
+    temperature:
+      auto: false
+      max: 60.0
+      min: 0.0
+      step: 10.0
+last_baudrate: 4800
+last_port: ''
+last_profile: New SN-3002 7-in-1 (official).json
+modules:
+  enabled:
+  - monitor
+  - scanner
+  - calibration
+  - profiles

@@ -1,0 +1,266 @@
+{
+  "name": "SN-3002 7-in-1 (test)",
+  "description": "Датчик SN-3002-TR-ECTHNPKPH-N01, протокол Modbus RTU",
+  "device": {
+    "default_address": 1,
+    "default_baudrate": 4800,
+    "available_baudrates": [2400, 4800, 9600]
+  },
+  "parameters": [
+    {
+      "key": "humidity",
+      "name": "humidity",
+      "unit": "%",
+      "address": 0,
+      "function_code": 3,
+      "factor": 0.1,
+      "offset": 0
+    },
+    {
+      "key": "temperature",
+      "name": "temperature",
+      "unit": "°C",
+      "address": 1,
+      "function_code": 3,
+      "factor": 0.1,
+      "offset": 0
+    },
+    {
+      "key": "ec",
+      "name": "EC",
+      "unit": "µS/cm",
+      "address": 2,
+      "function_code": 3,
+      "factor": 1,
+      "offset": 0
+    },
+    {
+      "key": "ph",
+      "name": "pH",
+      "unit": "",
+      "address": 3,
+      "function_code": 3,
+      "factor": 0.1,
+      "offset": 0
+    },
+    {
+      "key": "nitrogen",
+      "name": "nitrogen",
+      "unit": "mg/kg",
+      "address": 4,
+      "function_code": 3,
+      "factor": 1,
+      "offset": 0
+    },
+    {
+      "key": "phosphorus",
+      "name": "phosphorus",
+      "unit": "mg/kg",
+      "address": 5,
+      "function_code": 3,
+      "factor": 1,
+      "offset": 0
+    },
+    {
+      "key": "potassium",
+      "name": "potassium",
+      "unit": "mg/kg",
+      "address": 6,
+      "function_code": 3,
+      "factor": 1,
+      "offset": 0
+    },
+    {
+      "key": "salinity",
+      "name": "salinity",
+      "unit": "",
+      "address": 7,
+      "function_code": 3,
+      "factor": 1,
+      "offset": 0
+    },
+    {
+      "key": "tds",
+      "name": "TDS",
+      "unit": "ppm",
+      "address": 8,
+      "function_code": 3,
+      "factor": 1,
+      "offset": 0
+    }
+  ],
+  "system_registers": [
+    {
+      "key": "ec_temp_coef",
+      "name_key": "ec_temp_coef_name",
+      "address": 34,
+      "function_code": 3,
+      "factor": 0.1,
+      "unit": "%",
+      "writable": true,
+      "min": 0,
+      "max": 100
+    },
+    {
+      "key": "salinity_coef",
+      "name_key": "salinity_coef_name",
+      "address": 35,
+      "function_code": 3,
+      "factor": 0.01,
+      "unit": "",
+      "writable": true,
+      "min": 0,
+      "max": 100
+    },
+    {
+      "key": "tds_coef",
+      "name_key": "tds_coef_name",
+      "address": 36,
+      "function_code": 3,
+      "factor": 0.01,
+      "unit": "",
+      "writable": true,
+      "min": 0,
+      "max": 100
+    },
+    {
+      "key": "temp_calib",
+      "name_key": "temp_calib_name",
+      "address": 80,
+      "function_code": 3,
+      "factor": 0.1,
+      "unit": "°C",
+      "writable": true
+    },
+    {
+      "key": "humidity_calib",
+      "name_key": "humidity_calib_name",
+      "address": 81,
+      "function_code": 3,
+      "factor": 0.1,
+      "unit": "%",
+      "writable": true
+    },
+    {
+      "key": "ec_calib",
+      "name_key": "ec_calib_name",
+      "address": 82,
+      "function_code": 3,
+      "factor": 1,
+      "unit": "µS/cm",
+      "writable": true
+    },
+    {
+      "key": "ph_calib",
+      "name_key": "ph_calib_name",
+      "address": 83,
+      "function_code": 3,
+      "factor": 0.1,
+      "unit": "",
+      "writable": true
+    },
+    {
+      "key": "n_float_high",
+      "name_key": "n_float_high_name",
+      "address": 1256,
+      "function_code": 3,
+      "factor": 1,
+      "unit": "",
+      "writable": true
+    },
+    {
+      "key": "n_float_low",
+      "name_key": "n_float_low_name",
+      "address": 1257,
+      "function_code": 3,
+      "factor": 1,
+      "unit": "",
+      "writable": true
+    },
+    {
+      "key": "n_offset",
+      "name_key": "n_offset_name",
+      "address": 1258,
+      "function_code": 3,
+      "factor": 1,
+      "unit": "",
+      "writable": true
+    },
+    {
+      "key": "p_float_high",
+      "name_key": "p_float_high_name",
+      "address": 1266,
+      "function_code": 3,
+      "factor": 1,
+      "unit": "",
+      "writable": true
+    },
+    {
+      "key": "p_float_low",
+      "name_key": "p_float_low_name",
+      "address": 1267,
+      "function_code": 3,
+      "factor": 1,
+      "unit": "",
+      "writable": true
+    },
+    {
+      "key": "p_offset",
+      "name_key": "p_offset_name",
+      "address": 1268,
+      "function_code": 3,
+      "factor": 1,
+      "unit": "",
+      "writable": true
+    },
+    {
+      "key": "k_float_high",
+      "name_key": "k_float_high_name",
+      "address": 1276,
+      "function_code": 3,
+      "factor": 1,
+      "unit": "",
+      "writable": true
+    },
+    {
+      "key": "k_float_low",
+      "name_key": "k_float_low_name",
+      "address": 1277,
+      "function_code": 3,
+      "factor": 1,
+      "unit": "",
+      "writable": true
+    },
+    {
+      "key": "k_offset",
+      "name_key": "k_offset_name",
+      "address": 1278,
+      "function_code": 3,
+      "factor": 1,
+      "unit": "",
+      "writable": true
+    },
+    {
+      "key": "device_address",
+      "name_key": "device_address_name",
+      "address": 2000,
+      "function_code": 3,
+      "factor": 1,
+      "unit": "",
+      "writable": true,
+      "min": 1,
+      "max": 254
+    },
+    {
+      "key": "baudrate",
+      "name_key": "baudrate_name",
+      "address": 2001,
+      "function_code": 3,
+      "factor": 1,
+      "unit": "",
+      "writable": true,
+      "values": [2400, 4800, 9600]
+    }
+  ],
+  "calibration": null
+}

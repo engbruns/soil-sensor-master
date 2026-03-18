@@ -1,0 +1,21 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec
+
+# Logs
+logs/
+*.log
+*.csv
+
+# Temporary files
+~
+*.tmp
+
+# IDE settings
+.idea/
+.vscode/

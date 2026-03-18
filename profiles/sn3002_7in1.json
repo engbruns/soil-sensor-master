@@ -1,0 +1,105 @@
+{
+  "name": "VEMSEE SN-3002 7-in-1",
+  "description": "Профиль для датчика SN-3002-TR-ECTHNPKPH-N01 (температура, влажность, EC, pH, NPK)",
+  "device": {
+    "default_address": 1,
+    "default_baudrate": 4800,
+    "available_baudrates": [2400, 4800, 9600]
+  },
+  "parameters": [
+    {
+      "key": "humidity",
+      "name": "Влажность почвы",
+      "unit": "%",
+      "address": 0,
+      "function_code": 3,
+      "factor": 0.1,
+      "offset": 0,
+      "min": 0,
+      "max": 100
+    },
+    {
+      "key": "temperature",
+      "name": "Температура почвы",
+      "unit": "°C",
+      "address": 1,
+      "function_code": 3,
+      "factor": 0.1,
+      "offset": 0,
+      "min": -40,
+      "max": 80
+    },
+    {
+      "key": "ec",
+      "name": "Электропроводность (EC)",
+      "unit": "µS/cm",
+      "address": 2,
+      "function_code": 3,
+      "factor": 1,
+      "offset": 0,
+      "min": 0,
+      "max": 20000
+    },
+    {
+      "key": "ph",
+      "name": "pH",
+      "unit": "",
+      "address": 3,
+      "function_code": 3,
+      "factor": 0.1,
+      "offset": 0,
+      "min": 3,
+      "max": 9
+    },
+    {
+      "key": "nitrogen",
+      "name": "Азот (N)",
+      "unit": "mg/kg",
+      "address": 4,
+      "function_code": 3,
+      "factor": 1,
+      "offset": 0,
+      "min": 0,
+      "max": 1999
+    },
+    {
+      "key": "phosphorus",
+      "name": "Фосфор (P)",
+      "unit": "mg/kg",
+      "address": 5,
+      "function_code": 3,
+      "factor": 1,
+      "offset": 0,
+      "min": 0,
+      "max": 1999
+    },
+    {
+      "key": "potassium",
+      "name": "Калий (K)",
+      "unit": "mg/kg",
+      "address": 6,
+      "function_code": 3,
+      "factor": 1,
+      "offset": 0,
+      "min": 0,
+      "max": 1999
+    }
+  ],
+  "system_registers": [
+    {
+      "key": "device_address",
+      "name": "Адрес устройства",
+      "address": 7,
+      "function_code": 3,
+      "writable": true
+    },
+    {
+      "key": "baudrate",
+      "name": "Скорость (бод)",
+      "address": 8,
+      "function_code": 3,
+      "writable": true
+    }
+  ],
+  "calibration": null
+}
