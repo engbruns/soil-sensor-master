@@ -1,5 +1,6 @@
-pyserial
+﻿pyserial
 pyyaml
 numpy
 scikit-learn
 matplotlib
+PyQt6

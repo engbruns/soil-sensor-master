@@ -1,8 +1,11 @@
 # modules/profiles/panel.py
+# Расположение: modules/profiles/panel.py
+# Описание: Панель управления профилями с возможностью создания, редактирования, удаления.
+
 import tkinter as tk
 from tkinter import ttk, messagebox
 import os
-import subprocess
+from .edit_dialog import ProfileEditDialog
 
 class ProfilesPanel(ttk.Frame):
     def __init__(self, parent, app):
@@ -14,16 +17,15 @@ class ProfilesPanel(ttk.Frame):
         self.refresh_list()
 
     def create_widgets(self):
-        # Кнопки управления
         btn_frame = ttk.Frame(self)
         btn_frame.pack(fill=tk.X, padx=10, pady=5)
 
+        ttk.Button(btn_frame, text=self.tr("new_profile"), command=self.create_new).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_frame, text=self.tr("edit_profile"), command=self.edit_selected).pack(side=tk.LEFT, padx=2)
+        ttk.Button(btn_frame, text=self.tr("delete_profile"), command=self.delete_selected).pack(side=tk.LEFT, padx=2)
         ttk.Button(btn_frame, text=self.tr("refresh"), command=self.refresh_list).pack(side=tk.LEFT, padx=2)
-        ttk.Button(btn_frame, text=self.tr("open"), command=self.open_profile).pack(side=tk.LEFT, padx=2)
-        ttk.Button(btn_frame, text=self.tr("delete"), command=self.delete_profile).pack(side=tk.LEFT, padx=2)
-        ttk.Button(btn_frame, text=self.tr("new"), command=self.create_new).pack(side=tk.LEFT, padx=2)
 
-        # Список профилей
+        # Таблица профилей
         columns = ("name", "description")
         self.tree = ttk.Treeview(self, columns=columns, show="headings", height=20)
         self.tree.heading("name", text=self.tr("profile_name"))
@@ -54,21 +56,56 @@ class ProfilesPanel(ttk.Frame):
             return None
         return self.tree.item(selected[0], "tags")[0]
 
-    def open_profile(self):
+    def create_new(self):
+        dlg = ProfileEditDialog(self, self.profile_manager, tr=self.tr)
+        self.wait_window(dlg)
+        if dlg.result:
+            # Сохраняем профиль
+            name = dlg.result.get("name", "").replace(" ", "_").lower()
+            if not name:
+                name = "new_profile"
+            fname = name + ".json"
+            # Проверяем уникальность имени
+            while fname in self.profile_manager.list_profiles():
+                fname = name + "_1.json"
+                name = name + "_1"
+            dlg.result["name"] = name
+            if self.profile_manager.save_profile(fname, dlg.result):
+                self.refresh_list()
+                # Обновляем выпадающий список в главном окне
+                if hasattr(self.app, 'refresh_profiles'):
+                    self.app.refresh_profiles()
+                messagebox.showinfo(self.tr("success"), self.tr("profile_created"))
+            else:
+                messagebox.showerror(self.tr("error"), self.tr("save_failed"))
+
+    def edit_selected(self):
         fname = self.get_selected_filename()
         if not fname:
             messagebox.showinfo(self.tr("info"), self.tr("select_profile"))
             return
-        path = os.path.join(self.profile_manager.profiles_dir, fname)
-        try:
-            if os.name == 'nt':
-                os.startfile(path)
+        data = self.profile_manager.get_profile(fname)
+        if not data:
+            messagebox.showerror(self.tr("error"), self.tr("profile_not_found"))
+            return
+        # Создаём копию, чтобы не испортить оригинал до сохранения
+        import copy
+        edit_data = copy.deepcopy(data)
+        dlg = ProfileEditDialog(self, self.profile_manager, edit_data, self.tr)
+        self.wait_window(dlg)
+        if dlg.result:
+            # Сохраняем изменения
+            if self.profile_manager.save_profile(fname, dlg.result):
+                self.refresh_list()
+                if self.app.current_profile == fname:
+                    self.app.current_profile_data = dlg.result
+                if hasattr(self.app, 'refresh_profiles'):
+                    self.app.refresh_profiles()
+                messagebox.showinfo(self.tr("success"), self.tr("profile_saved"))
             else:
-                subprocess.run(["xdg-open", path])
-        except Exception as e:
-            messagebox.showerror(self.tr("error"), self.tr("open_failed"))
+                messagebox.showerror(self.tr("error"), self.tr("save_failed"))
 
-    def delete_profile(self):
+    def delete_selected(self):
         fname = self.get_selected_filename()
         if not fname:
             messagebox.showinfo(self.tr("info"), self.tr("select_profile"))
@@ -79,54 +116,16 @@ class ProfilesPanel(ttk.Frame):
                 if self.app.current_profile == fname:
                     self.app.current_profile = None
                     self.app.current_profile_data = None
+                if hasattr(self.app, 'refresh_profiles'):
+                    self.app.refresh_profiles()
             else:
                 messagebox.showerror(self.tr("error"), self.tr("delete_failed"))
-
-    def create_new(self):
-        dlg = tk.Toplevel(self)
-        dlg.title(self.tr("new_profile"))
-        dlg.geometry("300x200")
-        dlg.transient(self)
-        dlg.grab_set()
-
-        ttk.Label(dlg, text=self.tr("profile_name")).pack(pady=5)
-        name_var = tk.StringVar()
-        ttk.Entry(dlg, textvariable=name_var, width=30).pack(pady=5)
-
-        ttk.Label(dlg, text=self.tr("description")).pack(pady=5)
-        desc_var = tk.StringVar()
-        ttk.Entry(dlg, textvariable=desc_var, width=30).pack(pady=5)
-
-        def save():
-            profile_name = name_var.get().strip()
-            if not profile_name:
-                messagebox.showerror(self.tr("error"), self.tr("enter_name"))
-                return
-            fname = profile_name.replace(" ", "_").lower() + ".json"
-            profile_data = {
-                "name": profile_name,
-                "description": desc_var.get().strip(),
-                "device": {
-                    "default_address": 1,
-                    "default_baudrate": 4800,
-                    "available_baudrates": [2400, 4800, 9600]
-                },
-                "parameters": [],
-                "system_registers": [],
-                "calibration": None
-            }
-            if self.profile_manager.save_profile(fname, profile_data):
-                self.refresh_list()
-                dlg.destroy()
-                messagebox.showinfo(self.tr("success"), self.tr("profile_created"))
-            else:
-                messagebox.showerror(self.tr("error"), self.tr("save_failed"))
-
-        ttk.Button(dlg, text=self.tr("save"), command=save).pack(pady=5)
-        ttk.Button(dlg, text=self.tr("cancel"), command=dlg.destroy).pack(pady=5)
 
     def on_double_click(self, event):
         fname = self.get_selected_filename()
         if fname:
-            self.app.profile_var.set(fname)
-            self.app.load_profile(fname)
+            # При двойном клике загружаем профиль в главное окно
+            if hasattr(self.app, 'load_profile'):
+                self.app.load_profile(fname)
+            # Или можно просто открыть на редактирование:
+            # self.edit_selected()

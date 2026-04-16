@@ -3,12 +3,19 @@ import os
 import sys
 
 def resource_path(relative_path):
-    """Получить абсолютный путь к ресурсу. Работает и в разработке, и в скомпилированном exe."""
+    """Возвращает абсолютный путь к ресурсу. Работает и в разработке, и в скомпилированном exe."""
     try:
-        # PyInstaller создаёт временную папку и хранит путь в _MEIPASS
         base_path = sys._MEIPASS
     except AttributeError:
-        # Если мы не в скомпилированной версии, берём путь к папке со скриптом
         base_path = os.path.abspath(".")
-
     return os.path.join(base_path, relative_path)
+
+def get_appdata_dir(subfolder="SoilSensorMonitor"):
+    """Возвращает путь к папке приложения в AppData (Windows) или ~/.config (Linux/Mac)."""
+    if sys.platform == "win32":
+        base = os.environ.get('APPDATA', os.path.expanduser('~'))
+    else:
+        base = os.environ.get('XDG_CONFIG_HOME', os.path.expanduser('~/.config'))
+    path = os.path.join(base, subfolder)
+    os.makedirs(path, exist_ok=True)
+    return path

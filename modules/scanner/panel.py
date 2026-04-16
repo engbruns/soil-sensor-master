@@ -1,4 +1,8 @@
 # modules/scanner/panel.py
+# Расположение: modules/scanner/panel.py
+# Описание: Панель сканера – выбор датчика, настройка параметров сканирования,
+#           результаты в таблице. Добавлена вертикальная прокрутка.
+
 import tkinter as tk
 from tkinter import ttk, messagebox
 
@@ -11,19 +15,54 @@ class ScannerPanel(ttk.Frame):
         self.create_widgets()
 
     def create_widgets(self):
-        # Панель настроек
-        settings_frame = ttk.LabelFrame(self, text=self.tr("scan_settings"), padding=5)
-        settings_frame.pack(fill=tk.X, padx=10, pady=5)
+        # Создаём внешний canvas с прокруткой
+        self.canvas = tk.Canvas(self, highlightthickness=0)
+        self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.scrollable_frame = ttk.Frame(self.canvas)
 
-        ttk.Label(settings_frame, text=self.tr("address_mode")).grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+
+        self.canvas_window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+
+        # При изменении размеров scrollable_frame обновляем область прокрутки
+        self.scrollable_frame.bind("<Configure>", self._on_frame_configure)
+        # При изменении размера canvas обновляем ширину окна
+        self.canvas.bind("<Configure>", self._on_canvas_configure)
+
+        # Все виджеты размещаем внутри scrollable_frame
+        self._create_widgets_inside()
+
+    def _on_frame_configure(self, event):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+    def _on_canvas_configure(self, event):
+        self.canvas.itemconfig(self.canvas_window, width=event.width)
+
+    def _create_widgets_inside(self):
+        """Все внутренние элементы создаются здесь."""
+        # Панель выбора датчика
+        sensor_frame = ttk.LabelFrame(self.scrollable_frame, text=self.tr("select_sensor"), padding=5)
+        sensor_frame.pack(fill=tk.X, padx=10, pady=5)
+
+        ttk.Label(sensor_frame, text=self.tr("sensor")).grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+        self.sensor_combo = ttk.Combobox(sensor_frame, state="readonly", width=20)
+        self.sensor_combo.grid(row=0, column=1, padx=5, pady=5, sticky=tk.W)
+        self.sensor_combo.bind("<<ComboboxSelected>>", self.on_sensor_selected)
+
+        # Панель настроек сканирования
+        scan_frame = ttk.LabelFrame(self.scrollable_frame, text=self.tr("scan_settings"), padding=5)
+        scan_frame.pack(fill=tk.X, padx=10, pady=5)
+
+        ttk.Label(scan_frame, text=self.tr("address_mode")).grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
         self.address_mode = tk.StringVar(value="range")
-        ttk.Radiobutton(settings_frame, text=self.tr("range"), variable=self.address_mode, value="range",
+        ttk.Radiobutton(scan_frame, text=self.tr("range"), variable=self.address_mode, value="range",
                         command=self.toggle_mode).grid(row=0, column=1, padx=5, pady=5)
-        ttk.Radiobutton(settings_frame, text=self.tr("list"), variable=self.address_mode, value="list",
+        ttk.Radiobutton(scan_frame, text=self.tr("list"), variable=self.address_mode, value="list",
                         command=self.toggle_mode).grid(row=0, column=2, padx=5, pady=5)
 
-        # Фрейм для диапазона
-        self.range_frame = ttk.Frame(settings_frame)
+        self.range_frame = ttk.Frame(scan_frame)
         self.range_frame.grid(row=1, column=0, columnspan=3, pady=5)
         ttk.Label(self.range_frame, text=self.tr("start_addr")).pack(side=tk.LEFT)
         self.start_addr = tk.StringVar(value="0x00")
@@ -32,28 +71,27 @@ class ScannerPanel(ttk.Frame):
         self.end_addr = tk.StringVar(value="0x30")
         ttk.Entry(self.range_frame, textvariable=self.end_addr, width=8).pack(side=tk.LEFT, padx=2)
 
-        # Фрейм для списка
-        self.list_frame = ttk.Frame(settings_frame)
+        self.list_frame = ttk.Frame(scan_frame)
         self.list_frame.grid(row=1, column=0, columnspan=3, pady=5)
         ttk.Label(self.list_frame, text=self.tr("address_list")).pack(side=tk.LEFT)
         self.address_list = tk.StringVar(value="0x00-0x08, 0x22-0x24, 0x50-0x53, 0x4E8-0x4FE, 0x7D0-0x7D1")
         ttk.Entry(self.list_frame, textvariable=self.address_list, width=40).pack(side=tk.LEFT, padx=2)
 
-        self.toggle_mode()  # показать нужный фрейм
+        self.toggle_mode()
 
-        ttk.Label(settings_frame, text=self.tr("num_cycles")).grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
+        ttk.Label(scan_frame, text=self.tr("num_cycles")).grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
         self.cycles_var = tk.IntVar(value=10)
-        ttk.Spinbox(settings_frame, from_=1, to=100, textvariable=self.cycles_var, width=8).grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
+        ttk.Spinbox(scan_frame, from_=1, to=100, textvariable=self.cycles_var, width=8).grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
 
-        self.collect_btn = ttk.Button(settings_frame, text=self.tr("start_scan"), command=self.toggle_collect)
+        self.collect_btn = ttk.Button(scan_frame, text=self.tr("start_scan"), command=self.toggle_collect)
         self.collect_btn.grid(row=2, column=2, padx=10, pady=5)
 
         self.progress_var = tk.IntVar(value=0)
-        self.progress = ttk.Progressbar(settings_frame, orient=tk.HORIZONTAL, length=200, mode='determinate', variable=self.progress_var)
+        self.progress = ttk.Progressbar(scan_frame, orient=tk.HORIZONTAL, length=200, mode='determinate', variable=self.progress_var)
         self.progress.grid(row=3, column=0, columnspan=3, padx=5, pady=5, sticky=tk.EW)
 
         # Панель ориентиров
-        ref_frame = ttk.LabelFrame(self, text=self.tr("references"), padding=5)
+        ref_frame = ttk.LabelFrame(self.scrollable_frame, text=self.tr("references"), padding=5)
         ref_frame.pack(fill=tk.X, padx=10, pady=5)
 
         self.ref_tree = ttk.Treeview(ref_frame, columns=("param", "value", "tolerance"), show="headings", height=3)
@@ -76,9 +114,12 @@ class ScannerPanel(ttk.Frame):
         ttk.Button(ref_controls, text=self.tr("add"), command=self.add_reference).pack(side=tk.LEFT, padx=2)
         ttk.Button(ref_controls, text=self.tr("remove"), command=self.remove_reference).pack(side=tk.LEFT, padx=2)
 
-        # Кнопки управления – размещаем внизу
-        btn_frame = ttk.Frame(self)
+        # Кнопки управления
+        btn_frame = ttk.Frame(self.scrollable_frame)
         btn_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=5)
+
+        self.search_addr_btn = ttk.Button(btn_frame, text=self.tr("search_address"), command=self.presenter.open_address_search)
+        self.search_addr_btn.pack(side=tk.LEFT, padx=5)
 
         self.analyze_btn = ttk.Button(btn_frame, text=self.tr("analyze"), command=self.presenter.on_analyze_clicked, state=tk.DISABLED)
         self.analyze_btn.pack(side=tk.LEFT, padx=5)
@@ -86,15 +127,12 @@ class ScannerPanel(ttk.Frame):
         self.save_btn = ttk.Button(btn_frame, text=self.tr("save_profile"), command=self.presenter.on_save_profile, state=tk.DISABLED)
         self.save_btn.pack(side=tk.LEFT, padx=5)
 
-        self.sys_reg_btn = ttk.Button(btn_frame, text=self.tr("system_registers"), command=self.presenter.open_system_registers)
-        self.sys_reg_btn.pack(side=tk.LEFT, padx=5)
-
-        # Таблица результатов – занимает оставшееся место
-        result_frame = ttk.LabelFrame(self, text=self.tr("results"), padding=5)
+        # Таблица результатов (занимает оставшееся место)
+        result_frame = ttk.LabelFrame(self.scrollable_frame, text=self.tr("results"), padding=5)
         result_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
         columns = ("addr_hex", "addr_dec", "value_dec", "value_hex", "graph", "assign", "prob")
-        self.tree = ttk.Treeview(result_frame, columns=columns, show="headings", height=8)  # уменьшили высоту
+        self.tree = ttk.Treeview(result_frame, columns=columns, show="headings", height=8)
         self.tree.heading("addr_hex", text=self.tr("addr_hex"))
         self.tree.heading("addr_dec", text=self.tr("addr_dec"))
         self.tree.heading("value_dec", text=self.tr("value_dec"))
@@ -123,6 +161,26 @@ class ScannerPanel(ttk.Frame):
 
         self.tree.bind("<Button-1>", self.on_tree_click)
 
+        # Заполняем список датчиков
+        self.update_sensor_list()
+
+    # Все остальные методы остаются без изменений
+    def update_sensor_list(self):
+        sensors = self.presenter.core_api.list_sensors()
+        current = self.sensor_combo.get()
+        self.sensor_combo['values'] = sensors
+        if current in sensors:
+            self.sensor_combo.set(current)
+        elif sensors:
+            self.sensor_combo.set(sensors[0])
+        else:
+            self.sensor_combo.set("")
+
+    def on_sensor_selected(self, event):
+        name = self.sensor_combo.get()
+        if name:
+            self.presenter.on_sensor_selected(name)
+
     def toggle_mode(self):
         if self.address_mode.get() == "range":
             self.list_frame.grid_remove()
@@ -135,7 +193,6 @@ class ScannerPanel(ttk.Frame):
         if self.collecting:
             self.presenter.on_stop_collect()
         else:
-            # Парсим адреса
             try:
                 if self.address_mode.get() == "range":
                     start = int(self.start_addr.get(), 16)
@@ -150,7 +207,6 @@ class ScannerPanel(ttk.Frame):
             self.presenter.on_start_collect(addresses, cycles)
 
     def parse_address_string(self, s):
-        """Парсит строку вида '0x00-0x14, 0x30, 22-24' в список целых адресов."""
         result = []
         parts = s.split(',')
         for part in parts:
@@ -172,7 +228,6 @@ class ScannerPanel(ttk.Frame):
         return sorted(set(result))
 
     def _parse_addr(self, s):
-        """Преобразует строку в int, поддерживая hex (с или без 0x) и dec."""
         s = s.strip()
         if s.startswith(('0x', '0X')):
             return int(s, 16)
@@ -265,3 +320,13 @@ class ScannerPanel(ttk.Frame):
             idx = self.ref_tree.index(sel[0])
             self.ref_tree.delete(sel[0])
             self.presenter.on_remove_reference(idx)
+
+    def on_sensors_changed(self):
+        self.presenter.on_sensors_changed()
+
+    def on_show(self):
+        pass
+
+    def on_hide(self):
+        if self.collecting:
+            self.presenter.on_stop_collect()

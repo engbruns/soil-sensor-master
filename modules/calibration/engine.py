@@ -1,9 +1,9 @@
 # modules/calibration/engine.py
+# Расположение: modules/calibration/engine.py
+# Описание: Движок сбора данных для калибровки.
+
 import threading
 import time
-import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 from utils.utils import safe_median, log_error
 
@@ -13,15 +13,24 @@ class CalibrationEngine:
         self._stop_flag = False
         self.thread = None
 
-    def collect_point(self, selected_params, num_samples, ref_sensor=None, ref_profile_data=None, callback=None):
+    def collect_point(self, sensor, selected_params, num_samples, ref_sensor=None, ref_profile_data=None, callback=None):
         """
         Запускает сбор данных в отдельном потоке.
+        sensor: объект SoilSensor калибруемого датчика
+        selected_params: список ключей параметров
+        num_samples: количество считываний
+        ref_sensor: эталонный датчик (опционально)
+        ref_profile_data: профиль эталонного датчика (опционально)
+        callback: функция(raw_stats, ref_stats)
         """
-        if not self.core_api.sensor or not self.core_api.sensor.connected:
+        if not sensor or not sensor.connected:
             log_error("Calibration: main sensor not connected")
             if callback:
                 callback(None, None)
             return
+
+        # New collection session starts with a cleared stop flag.
+        self._stop_flag = False
 
         def _collect():
             raw_data = {param: [] for param in selected_params}
@@ -30,18 +39,16 @@ class CalibrationEngine:
             for _ in range(num_samples):
                 if self._stop_flag:
                     break
-                # Чтение с основного датчика
                 for param in selected_params:
                     if self._stop_flag:
                         break
-                    addr = self._get_address(param, self.core_api.get_current_profile_data())
+                    addr = self._get_address(param, sensor.profile_data)
                     if addr is not None:
-                        vals = self.core_api.sensor.read_registers(addr, 1)
+                        vals = sensor.read_registers(addr, 1)
                         if vals and len(vals) == 1:
                             raw_data[param].append(vals[0])
                         else:
                             raw_data[param].append(None)
-                # Если есть эталонный датчик, читаем с него
                 if ref_sensor and ref_sensor.connected and not self._stop_flag and ref_profile_data:
                     for param in selected_params:
                         if self._stop_flag:
@@ -60,7 +67,6 @@ class CalibrationEngine:
                     callback(None, None)
                 return
 
-            # Вычисляем статистику
             raw_stats = {}
             for param in selected_params:
                 values = [v for v in raw_data[param] if v is not None]
@@ -98,7 +104,6 @@ class CalibrationEngine:
         self.thread.start()
 
     def _get_address(self, param_key, profile_data):
-        """Вспомогательная функция для получения адреса параметра из профиля."""
         if not profile_data:
             return None
         for p in profile_data.get('parameters', []):
@@ -107,17 +112,19 @@ class CalibrationEngine:
         return None
 
     def stop(self):
-        """Останавливает текущий сбор данных."""
         self._stop_flag = True
         if self.thread:
             self.thread.join(timeout=1)
 
     def calculate_regression(self, X, y, model_type='linear'):
+        import numpy as np
+        from sklearn.linear_model import LinearRegression
+        from sklearn.preprocessing import PolynomialFeatures
+               
         if len(X) < 2:
             return None
         Xnp = np.array(X).reshape(-1,1)
         ynp = np.array(y)
-
         if model_type == 'linear':
             model = LinearRegression()
             model.fit(Xnp, ynp)

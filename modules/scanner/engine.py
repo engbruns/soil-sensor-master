@@ -1,4 +1,7 @@
 # modules/scanner/engine.py
+# Расположение: modules/scanner/engine.py
+# Описание: Движок сканера – сбор данных в фоновом потоке.
+
 import threading
 import time
 from utils.utils import safe_median, log_error
@@ -8,12 +11,13 @@ class ScannerEngine:
         self.core_api = core_api
         self.running = False
         self.thread = None
-        self.callback = None  # будет вызван при получении данных (для живого обновления)
-        self.finished_callback = None  # будет вызван после завершения цикла
+        self.progress_callback = None
+        self.finished_callback = None
 
-    def start_collect(self, addresses, num_cycles, progress_callback, finished_callback):
+    def start_collect(self, sensor, addresses, num_cycles, progress_callback, finished_callback):
         """
         Запускает сбор данных.
+        sensor: объект SoilSensor (уже подключён)
         addresses: список целых чисел (адресов)
         num_cycles: количество циклов
         progress_callback: функция(percent)
@@ -22,7 +26,7 @@ class ScannerEngine:
         self.running = True
         self.progress_callback = progress_callback
         self.finished_callback = finished_callback
-        self.thread = threading.Thread(target=self._collect_loop, args=(addresses, num_cycles), daemon=True)
+        self.thread = threading.Thread(target=self._collect_loop, args=(sensor, addresses, num_cycles), daemon=True)
         self.thread.start()
 
     def stop(self):
@@ -30,8 +34,7 @@ class ScannerEngine:
         if self.thread:
             self.thread.join(timeout=1)
 
-    def _collect_loop(self, addresses, num_cycles):
-        sensor = self.core_api.sensor
+    def _collect_loop(self, sensor, addresses, num_cycles):
         if not sensor or not sensor.connected:
             log_error("Scanner: sensor not connected")
             if self.finished_callback:
@@ -56,21 +59,20 @@ class ScannerEngine:
                 except Exception as e:
                     log_error(f"Scanner: error reading addr {addr}: {e}")
                     raw_data[addr].append(None)
-                time.sleep(0.05)  # пауза между регистрами
+                time.sleep(0.05)
 
             if self.progress_callback:
                 progress = int((cycle + 1) / total_cycles * 100)
                 self.progress_callback(progress)
 
             if cycle < total_cycles - 1 and self.running:
-                time.sleep(2)  # интервал между циклами
+                time.sleep(2)
 
         if not self.running:
             if self.finished_callback:
                 self.finished_callback([], False)
             return
 
-        # Вычисляем медианы и формируем снапшот
         snapshot = []
         for addr in addresses:
             values = [v for v in raw_data[addr] if v is not None]
@@ -94,3 +96,4 @@ class ScannerEngine:
 
         if self.finished_callback:
             self.finished_callback(snapshot, True)
+        self.running = False

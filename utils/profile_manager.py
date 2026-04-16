@@ -1,31 +1,72 @@
-# utils/profile_manager.py
-# Расположение: utils/profile_manager.py
-# Описание: Менеджер профилей – загрузка, сохранение, удаление JSON-файлов.
+# Profile manager for user-editable sensor profiles.
 
-import os
 import json
-from config import PROFILES_DIR
+import os
+import shutil
+
+from config import EMBEDDED_PROFILES_DIR, PROFILES_DIR
+
+
+def get_profiles_dir():
+    """Return canonical writable directory for profiles."""
+    os.makedirs(PROFILES_DIR, exist_ok=True)
+    return PROFILES_DIR
+
 
 class ProfileManager:
     def __init__(self):
-        self.profiles_dir = PROFILES_DIR
+        self.profiles_dir = get_profiles_dir()
         os.makedirs(self.profiles_dir, exist_ok=True)
+        self._ensure_default_profiles()
         self.cache = {}
         self._load_all()
 
+    def _ensure_default_profiles(self):
+        """Copy bundled JSON profiles to user folder if missing."""
+        if not os.path.exists(EMBEDDED_PROFILES_DIR):
+            return
+
+        for fname in os.listdir(EMBEDDED_PROFILES_DIR):
+            if not fname.endswith('.json'):
+                continue
+
+            src = os.path.join(EMBEDDED_PROFILES_DIR, fname)
+            dst = os.path.join(self.profiles_dir, fname)
+            if os.path.exists(dst):
+                continue
+
+            try:
+                shutil.copy2(src, dst)
+            except Exception as exc:
+                from .utils import log_error
+
+                log_error(f"Failed to copy default profile {fname}: {exc}")
+
+    def copy_profile(self, fname, new_name):
+        data = self.get_profile(fname)
+        if not data:
+            return False
+        new_fname = new_name.replace(" ", "_").lower() + ".json"
+        return self.save_profile(new_fname, data)
+
     def _load_all(self):
+        """Load all profiles from user profile directory into cache."""
         self.cache.clear()
         if not os.path.exists(self.profiles_dir):
             return
+
         for fname in os.listdir(self.profiles_dir):
-            if fname.endswith('.json'):
-                path = os.path.join(self.profiles_dir, fname)
-                try:
-                    with open(path, 'r', encoding='utf-8') as f:
-                        self.cache[fname] = json.load(f)
-                except Exception as e:
-                    from .utils import log_error
-                    log_error(f"Load profile {fname}: {e}")
+            if not fname.endswith('.json'):
+                continue
+
+            path = os.path.join(self.profiles_dir, fname)
+            try:
+                with open(path, 'r', encoding='utf-8-sig') as f:
+                    self.cache[fname] = json.load(f)
+            except Exception as exc:
+                from .utils import log_error
+
+                log_error(f"Load profile {fname}: {exc}")
 
     def list_profiles(self):
         return list(self.cache.keys())
@@ -42,9 +83,10 @@ class ProfileManager:
                 json.dump(data, f, indent=4, ensure_ascii=False)
             self.cache[fname] = data
             return True
-        except Exception as e:
+        except Exception as exc:
             from .utils import log_error
-            log_error(f"Save profile {fname}: {e}")
+
+            log_error(f"Save profile {fname}: {exc}")
             return False
 
     def delete_profile(self, fname):
@@ -53,40 +95,12 @@ class ProfileManager:
             os.remove(path)
             self.cache.pop(fname, None)
             return True
-        except Exception as e:
+        except Exception as exc:
             from .utils import log_error
-            log_error(f"Delete profile {fname}: {e}")
+
+            log_error(f"Delete profile {fname}: {exc}")
             return False
 
     def create_default_profiles(self):
-        """Создаёт несколько базовых профилей, если их нет."""
-        defaults = [
-            {
-                "name": "JXCT 7-in-1 (пример)",
-                "description": "Пример профиля для 7-в-1 (адреса требуют уточнения)",
-                "device": {"default_address": 1, "default_baudrate": 4800, "available_baudrates": [2400,4800,9600]},
-                "parameters": [
-                    {"key": "temperature", "name": "temperature", "unit": "°C", "address": 19, "factor": 0.1, "offset": 0},
-                    {"key": "humidity", "name": "humidity", "unit": "%", "address": 18, "factor": 0.1, "offset": 0},
-                    {"key": "ph", "name": "pH", "unit": "", "address": 6, "factor": 0.01, "offset": 0},
-                    {"key": "ec", "name": "EC", "unit": "µS/cm", "address": 21, "factor": 1, "offset": 0},
-                    {"key": "nitrogen", "name": "nitrogen", "unit": "mg/kg", "address": 30, "factor": 1, "offset": 0},
-                    {"key": "phosphorus", "name": "phosphorus", "unit": "mg/kg", "address": 31, "factor": 1, "offset": 0},
-                    {"key": "potassium", "name": "potassium", "unit": "mg/kg", "address": 32, "factor": 1, "offset": 0}
-                ]
-            },
-            {
-                "name": "JXCT NPK",
-                "description": "Отдельный NPK датчик",
-                "device": {"default_address": 1, "default_baudrate": 9600, "available_baudrates": [2400,4800,9600]},
-                "parameters": [
-                    {"key": "nitrogen", "name": "nitrogen", "unit": "mg/kg", "address": 30, "factor": 1, "offset": 0},
-                    {"key": "phosphorus", "name": "phosphorus", "unit": "mg/kg", "address": 31, "factor": 1, "offset": 0},
-                    {"key": "potassium", "name": "potassium", "unit": "mg/kg", "address": 32, "factor": 1, "offset": 0}
-                ]
-            }
-        ]
-        for prof in defaults:
-            fname = prof["name"].replace(" ", "_").lower() + ".json"
-            if fname not in self.cache:
-                self.save_profile(fname, prof)
+        """Backward-compatible no-op kept for legacy call sites."""
+        pass

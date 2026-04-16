@@ -1,4 +1,4 @@
-# Python cache
+﻿# Python cache
 __pycache__/
 *.pyc
 
@@ -13,10 +13,23 @@ logs/
 *.csv
 
 # Temporary files
-~
+~$*
+*~
 *.tmp
+*.bak
+*.orig
+*.old
+tmp_cfg_*/
+installer/output_379/
+installer/output_379_exact/
+installer/output/SoilSensMaster_Setup_3_7_9.exe
+installer/output/SoilSensMaster_Setup_3_7_9_from_exact.exe
 
 # IDE settings
 .idea/
 .vscode/
 
+
+.tmp_docs/
+AGENT_MEMORY.md
+**/__pycache__/

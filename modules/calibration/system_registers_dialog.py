@@ -1,15 +1,17 @@
-# modules/scanner/system_registers_dialog.py
+# modules/calibration/system_registers_dialog.py
 import tkinter as tk
 from tkinter import ttk, messagebox
 import struct
+from utils.value_transform import convert_parameter_value
 
 class SystemRegistersDialog(tk.Toplevel):
-    def __init__(self, parent, core_api, profile, tr):
+    def __init__(self, parent, core_api, profile, tr, sensor):
         super().__init__(parent)
         self.parent = parent
         self.core_api = core_api
         self.profile = profile
         self.tr = tr
+        self.sensor = sensor
         self.title(self.tr("system_registers"))
         self.geometry("800x400")
         self.transient(parent)
@@ -43,8 +45,7 @@ class SystemRegistersDialog(tk.Toplevel):
         for row in self.tree.get_children():
             self.tree.delete(row)
 
-        sensor = self.core_api.sensor
-        if not sensor or not sensor.connected:
+        if not self.sensor or not self.sensor.connected:
             messagebox.showerror(self.tr("error"), self.tr("sensor_not_connected"))
             return
 
@@ -53,21 +54,18 @@ class SystemRegistersDialog(tk.Toplevel):
             if not isinstance(reg, dict):
                 continue
             addr = reg["address"]
-            # Чтение значения
             if reg.get("type") == "float32":
-                vals = sensor.read_registers(addr, 2)
+                vals = self.sensor.read_registers(addr, 2)
                 if vals and len(vals) == 2:
                     combined = (vals[0] << 16) | vals[1]
                     value = struct.unpack('>f', struct.pack('>I', combined))[0]
                 else:
                     value = None
             else:
-                vals = sensor.read_registers(addr, 1)
+                vals = self.sensor.read_registers(addr, 1)
                 if vals and len(vals) == 1:
                     raw = vals[0]
-                    factor = reg.get("factor", 1)
-                    offset = reg.get("offset", 0)
-                    value = raw * factor + offset
+                    value = convert_parameter_value(raw, reg, None)
                 else:
                     value = None
 
@@ -88,29 +86,25 @@ class SystemRegistersDialog(tk.Toplevel):
         if not item:
             return
         col = self.tree.identify_column(event.x)
-        if col == "#5":  # колонка "action"
+        if col == "#5":
             tags = self.tree.item(item, "tags")
             if tags and tags[0]:
-                try:
-                    idx = int(tags[0])
-                    if 0 <= idx < len(self.system_regs):
-                        self.edit_register(self.system_regs[idx])
-                    else:
-                        messagebox.showerror(self.tr("error"), "Invalid register index")
-                except ValueError:
-                    messagebox.showerror(self.tr("error"), "Invalid register tag")
+                idx = int(tags[0])
+                if 0 <= idx < len(self.system_regs):
+                    self.edit_register(self.system_regs[idx])
 
     def edit_register(self, reg):
-        EditDialog(self, self.core_api, reg, self.tr, self.load_values)
+        EditDialog(self, self.core_api, reg, self.tr, self.load_values, self.sensor)
 
 class EditDialog(tk.Toplevel):
-    def __init__(self, parent, core_api, reg, tr, callback):
+    def __init__(self, parent, core_api, reg, tr, callback, sensor):
         super().__init__(parent)
         self.parent = parent
         self.core_api = core_api
         self.reg = reg
         self.tr = tr
         self.callback = callback
+        self.sensor = sensor
         self.title(f"{tr('edit')} {tr(reg.get('name_key', reg['key']))}")
         self.geometry("300x150")
         self.transient(parent)
@@ -133,8 +127,7 @@ class EditDialog(tk.Toplevel):
             messagebox.showerror(self.tr("error"), self.tr("invalid_number"))
             return
 
-        sensor = self.core_api.sensor
-        if not sensor or not sensor.connected:
+        if not self.sensor or not self.sensor.connected:
             messagebox.showerror(self.tr("error"), self.tr("sensor_not_connected"))
             return
 
@@ -147,6 +140,18 @@ class EditDialog(tk.Toplevel):
             return
         raw = int(raw)
 
+        signed = bool(self.reg.get("signed"))
+        if signed:
+            if raw < -32768 or raw > 32767:
+                messagebox.showerror(self.tr("error"), self.tr("invalid_number"))
+                return
+            raw_to_write = raw & 0xFFFF
+        else:
+            if raw < 0 or raw > 0xFFFF:
+                messagebox.showerror(self.tr("error"), self.tr("invalid_number"))
+                return
+            raw_to_write = raw
+
         if "min" in self.reg and raw < self.reg["min"]:
             messagebox.showerror(self.tr("error"), f"{self.tr('min')} {self.reg['min']}")
             return
@@ -157,8 +162,7 @@ class EditDialog(tk.Toplevel):
             messagebox.showerror(self.tr("error"), f"{self.tr('allowed')} {self.reg['values']}")
             return
 
-        # Выполняем запись
-        success = sensor.write_register(addr, raw)
+        success = self.sensor.write_register(addr, raw_to_write)
         if success:
             messagebox.showinfo(self.tr("success"), self.tr("write_success"))
             self.callback()
